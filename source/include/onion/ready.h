@@ -40,6 +40,8 @@ extern "C" {
 #define ONION_READY_LEGACY_HEN_FAILED "legacy_hen_failed"
 #define ONION_READY_DAEMON "daemon"
 #define ONION_READY_TOOLBOX "toolbox"
+#define ONION_READY_FPS_MONITOR "fps_monitor"
+#define ONION_READY_FPS_MONITOR_UI "fps_monitor_ui"
 
 /*
  * Runtime flags (same storage as ready markers; typed names replace ad-hoc

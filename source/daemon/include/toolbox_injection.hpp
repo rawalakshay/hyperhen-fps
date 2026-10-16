@@ -33,8 +33,12 @@ struct ToolboxInjectionOutcome {
 
 class ToolboxInject final {
 public:
+  /* marker: ready name the injected ELF publishes with its PID. */
+  explicit ToolboxInject(const char *marker = ONION_READY_TOOLBOX) noexcept
+      : marker_(marker) {}
+
   bool is_ready_for(pid_t pid) const noexcept {
-    return onion_ready_matches_pid(ONION_READY_TOOLBOX, pid);
+    return onion_ready_matches_pid(marker_, pid);
   }
 
   template <typename ResolvePid, typename InjectFn>
@@ -59,25 +63,26 @@ public:
     }
 
     /* Stale marker is another PID; ready file is not the rest-resume signal. */
-    onion_ready_clear(ONION_READY_TOOLBOX);
+    onion_ready_clear(marker_);
     if (!inject_fn(pid)) {
-      onion_ready_clear(ONION_READY_TOOLBOX);
+      onion_ready_clear(marker_);
       return {ToolboxInjectionResult::InjectFailed, pid};
     }
-    if (!onion_ready_wait_pid(ONION_READY_TOOLBOX, pid, timeout_ms, poll_ms)) {
-      onion_ready_clear(ONION_READY_TOOLBOX);
+    if (!onion_ready_wait_pid(marker_, pid, timeout_ms, poll_ms)) {
+      onion_ready_clear(marker_);
       return {ToolboxInjectionResult::ReadyTimeout, pid};
     }
 
     const pid_t resolved_after = resolve_pid();
     if (resolved_after > 1 && resolved_after != pid) {
-      onion_ready_clear(ONION_READY_TOOLBOX);
+      onion_ready_clear(marker_);
       return {ToolboxInjectionResult::TargetChanged, pid};
     }
     return {ToolboxInjectionResult::Injected, pid};
   }
 
 private:
+  const char *marker_;
   mutable std::mutex mutex_;
 };
 

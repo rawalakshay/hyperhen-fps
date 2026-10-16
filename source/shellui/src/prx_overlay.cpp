@@ -8,7 +8,9 @@
 #include <onion/fps_sample.h>
 #include <onion/net.h>
 #include <onion/settings.hpp>
+#ifndef HYPERHEN_FPS_MONITOR
 #include "plugin_progress.hpp"
+#endif
 #include <cstdio>
 #include <cstdlib>
 #include <vector>
@@ -72,12 +74,14 @@ Proc_Stats Stat_Data[3072];
 thread_usages gThread_Data[2];
 
 
+#ifndef HYPERHEN_FPS_MONITOR
 extern "C" int sceLncUtilKillAppWithReason(int appId, int reason);
 
 int KillAppWithReason_Hook(int appId, int reason)
 {
     return sceLncUtilKillAppWithReason(appId, reason);
 }
+#endif
 
 void Get_Page_Table_Stats(int vm, int type, int* Used, int* Free, int* Total)
 {
@@ -595,8 +599,10 @@ void OnRender_Hook(MonoObject* instance) {
     return;
   }
 
+#ifndef HYPERHEN_FPS_MONITOR
   /* UI thread: one NPXS40002 reload covers display TIDs and top-nav patch. */
   shellui_poll_home_reload();
+#endif
 
   static bool inited = false;
   static unsigned int idle_thread_id[kCpuCores] = {};
@@ -660,6 +666,7 @@ void OnRender_Hook(MonoObject* instance) {
 
   OnRender_orig(instance);
 
+#ifndef HYPERHEN_FPS_MONITOR
   /*
    * Legacy's own UpdateProgressPanel lifecycle runs inside OnRender_orig and
    * can restore its default Progress=1.0. Apply our value after that update so
@@ -667,4 +674,5 @@ void OnRender_Hook(MonoObject* instance) {
    */
   shellui_poll_cheat_progress();
   shellui_poll_plugin_progress();
+#endif
 }

@@ -334,10 +334,10 @@ main() {
   fi
 
   # Phase 3 — daemons
-  log "Phase 3/5: util + daemon"
-  build_targets util daemon
+  log "Phase 3/5: util + daemon + fps-monitor"
+  build_targets util daemon fps_monitor_shellui fps_monitor
 
-  for f in daemon.elf util.elf; do
+  for f in daemon.elf util.elf monitor_shellui.elf fps-monitor.elf; do
     [[ -f "${BIN}/${f}" ]] || die "missing ${BIN}/${f} after phase 3"
     ok "built ${f}"
   done

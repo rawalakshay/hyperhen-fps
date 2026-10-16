@@ -16,25 +16,6 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-extern "C" {
-  int sceSystemServiceGetAppIdOfRunningBigApp();
-  int sceSystemServiceGetAppTitleId(int app_id, char *title_id);
-}
-
-bool Get_Running_App_TID(std::string &title_id, int &BigAppid) {
-  char tid[255];
-  BigAppid = sceSystemServiceGetAppIdOfRunningBigApp();
-  if (BigAppid < 0)
-    return false;
-
-  (void)memset(tid, 0, sizeof tid);
-  if (sceSystemServiceGetAppTitleId(BigAppid, &tid[0]) != 0)
-    return false;
-
-  title_id = std::string(tid);
-  return true;
-}
-
 bool Open_Utility_Elf(const char *path, uint8_t **buffer) {
   if (!path || !buffer) {
     LOG_ERROR("Invalid arguments: path or buffer is null.");
