@@ -43,6 +43,7 @@ extern "C" int test_toolbox_helpers_suite(void);
 extern "C" int test_toolbox_i18n_suite(void);
 extern "C" int test_overlay_text_metrics_suite(void);
 extern "C" int test_overlay_layout_suite(void);
+extern "C" int test_overlay_scene_suite(void);
 extern "C" int test_fps_formula_suite(void);
 extern "C" int test_app_lifecycle_suite(void);
 extern "C" int test_sprx_loader_suite(void);
@@ -101,6 +102,7 @@ int main() {
   failures += test_toolbox_i18n_suite();
   failures += test_overlay_text_metrics_suite();
   failures += test_overlay_layout_suite();
+  failures += test_overlay_scene_suite();
   failures += test_fps_formula_suite();
   failures += test_app_lifecycle_suite();
   failures += test_sprx_loader_suite();

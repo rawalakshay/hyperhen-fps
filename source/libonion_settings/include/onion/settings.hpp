@@ -154,6 +154,55 @@ inline constexpr int kOverlayFontSmall = 0;
 inline constexpr int kOverlayFontMedium = 1;
 inline constexpr int kOverlayFontLarge = 2;
 
+/** How much the overlay shows, smallest to largest. */
+inline constexpr int kOverlayDetailMinimal = 0; /* FPS pill only */
+inline constexpr int kOverlayDetailCompact = 1; /* one fitted line */
+inline constexpr int kOverlayDetailPanel = 2;   /* corner panel */
+inline constexpr int kOverlayDetailFull = 3;    /* panel + cores, IP, fan */
+/* Only the standalone fps-monitor draws the detail levels; it opens on the panel. */
+inline constexpr int kOverlayDetailDefault = kOverlayDetailPanel;
+
+inline constexpr bool overlay_detail_valid(int detail) {
+  return detail >= kOverlayDetailMinimal && detail <= kOverlayDetailFull;
+}
+
+inline const char *overlay_detail_name(int detail) {
+  switch (detail) {
+  case kOverlayDetailMinimal:
+    return "minimal";
+  case kOverlayDetailPanel:
+    return "panel";
+  case kOverlayDetailFull:
+    return "full";
+  default:
+    return "compact";
+  }
+}
+
+/** Background opacity in percent; 0 hides the background. */
+inline constexpr std::array<int, 4> kOverlayOpacityOptions = {0, 40, 65, 85};
+inline constexpr int kOverlayOpacityDefault = 65;
+
+inline constexpr bool overlay_opacity_valid(int pct) {
+  for (int option : kOverlayOpacityOptions) {
+    if (option == pct)
+      return true;
+  }
+  return false;
+}
+
+/** Gap in pixels between the overlay and the screen edges it hugs. */
+inline constexpr std::array<int, 4> kOverlayMarginOptions = {0, 5, 10, 20};
+inline constexpr int kOverlayMarginDefault = 10;
+
+inline constexpr bool overlay_margin_valid(int px) {
+  for (int option : kOverlayMarginOptions) {
+    if (option == px)
+      return true;
+  }
+  return false;
+}
+
 inline constexpr int kOverlayFontPtSmall = 14;
 inline constexpr int kOverlayFontPtMedium = 18;
 inline constexpr int kOverlayFontPtLarge = 24;
@@ -320,11 +369,27 @@ struct Settings {
   bool all_cpu_usage = false;
   int overlay_pos = 0; // 0/1 top edge, 2/3 bottom edge
   /** 0 left, 1 center, 2 right. Independent of overlay.edge. */
-  int overlay_align = kOverlayAlignCenter;
+  int overlay_align = kOverlayAlignLeft;
   /** 0 small, 1 medium, 2 large. Applies to the whole monitor bar. */
   int overlay_font_size = kOverlayFontMedium;
   /** Display order of the six metrics; values are kOverlayMetric*. */
   std::array<int, kOverlayMetricCount> overlay_order = kOverlayOrderDefault;
+  /* Detail-level overlay (fps-monitor only; HyperHEN's bar ignores these). */
+  /** kOverlayDetail*: minimal pill, compact line, panel or full panel. */
+  int overlay_detail = kOverlayDetailDefault;
+  /** Background opacity percent; one of kOverlayOpacityOptions, 0 = none. */
+  int overlay_opacity = kOverlayOpacityDefault;
+  /** Show the "4aLse Benchmarks" header line on the panel. */
+  bool overlay_brand = false;
+  /** Also show the FPS pill in the opposite top/bottom corner (compact,
+   *  panel and full; the minimal level already is the pill). */
+  bool overlay_fps_pill = false;
+  /** CPU / GPU / memory row under the charts (compact, panel and full). */
+  bool overlay_system = true;
+  /** 7.5 s frame-time graph along the bottom edge (every level). */
+  bool overlay_frame_graph = false;
+  /** Edge gap in pixels; one of kOverlayMarginOptions. */
+  int overlay_margin = kOverlayMarginDefault;
 
   // [shortcuts]
   int cheats_shortcut_opt = 0;

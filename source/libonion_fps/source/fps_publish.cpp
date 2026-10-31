@@ -66,13 +66,9 @@ void publish_close() {
 void publish(const OnionFpsSample &sample) {
   if (!publish_open())
     return;
-  const uint32_t seq = g_map->seq;
-  __atomic_store_n(&g_map->seq, seq + 1u, __ATOMIC_RELEASE);
   OnionFpsSample tmp = sample;
   tmp.magic = ONION_FPS_MAGIC;
-  tmp.seq = seq + 2u;
-  std::memcpy(static_cast<void *>(g_map), &tmp, sizeof(tmp));
-  __atomic_store_n(&g_map->seq, seq + 2u, __ATOMIC_RELEASE);
+  onion_fps_seqlock_store(g_map, &tmp);
 }
 
 } // namespace fps

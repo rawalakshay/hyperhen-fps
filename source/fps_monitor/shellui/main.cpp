@@ -48,6 +48,7 @@ struct AuthIdGuard {
 bool resolve_symbols(pid_t pid) {
   const int libkernelsys = get_module_handle(pid, "libkernel_sys.sprx");
   KERNEL_DLSYM(libkernelsys, sceKernelMprotect);
+  KERNEL_DLSYM(libkernelsys, sceKernelGetSocPowerConsumption); /* optional */
 
   const int libmono = get_module_handle(pid, "libmonosgen-2.0.sprx");
   KERNEL_DLSYM(libmono, mono_get_root_domain);
@@ -66,6 +67,9 @@ bool resolve_symbols(pid_t pid) {
   KERNEL_DLSYM(libmono, mono_object_new);
   KERNEL_DLSYM(libmono, mono_object_unbox);
   KERNEL_DLSYM(libmono, mono_runtime_object_init);
+  /* The scene renderer pins every widget it caches. */
+  KERNEL_DLSYM(libmono, mono_gchandle_new);
+  KERNEL_DLSYM(libmono, mono_gchandle_free); /* optional; null if missing */
   const bool ok =
       sceKernelMprotect && mono_get_root_domain && mono_thread_attach &&
       mono_domain_assembly_open && mono_assembly_get_image &&
@@ -73,7 +77,8 @@ bool resolve_symbols(pid_t pid) {
       mono_compile_method && mono_runtime_invoke && mono_string_new &&
       mono_domain_get && mono_class_get_property_from_name &&
       mono_property_get_get_method && mono_property_get_set_method &&
-      mono_object_new && mono_object_unbox && mono_runtime_object_init;
+      mono_object_new && mono_object_unbox && mono_runtime_object_init &&
+      mono_gchandle_new;
   if (!ok)
     LOG_ERROR("fps-monitor: symbol resolution failed");
   return ok;

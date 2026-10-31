@@ -351,6 +351,19 @@ void publish_invalid(int pid, const char *tid) {
   onion::fps::publish(s);
 }
 
+/* Attach the running frame count (ONION_FPS_EXT_FRAMES) to a valid sample. */
+void attach_frame_count(OnionFpsSample &s,
+                        const onion::fps::FrameAccumulator &frames,
+                        float raw_fps) {
+  if (!frames.started())
+    return;
+  s.ext_layout = ONION_FPS_EXT_FRAMES;
+  s.ext_epoch = frames.epoch();
+  s.frames_milli = frames.frames_milli();
+  s.frames_mono_ns = frames.last_ns();
+  s.raw_fps = raw_fps;
+}
+
 } // namespace
 
 void *vsync_fps_sampler_thread(void *args) noexcept {
@@ -477,6 +490,7 @@ void *fps_sampler_thread(void *args) noexcept {
   CounterState ring_st;
   CounterState global_st;
   CalibrationState calibration;
+  onion::fps::FrameAccumulator frames;
   float window[onion::fps::kWindow] {};
   int window_n = 0;
   int window_i = 0;
@@ -535,6 +549,7 @@ void *fps_sampler_thread(void *args) noexcept {
       bc_last_status = onion::fps::BcHookStatus::NotAttempted;
       last_bc_install_ns = 0;
       bc_dead = 0;
+      frames.restart();
       window_n = 0;
       window_i = 0;
       dead_ticks = 0;
@@ -567,6 +582,7 @@ void *fps_sampler_thread(void *args) noexcept {
         bc_last_status = onion::fps::BcHookStatus::NotAttempted;
         last_bc_install_ns = 0;
         bc_dead = 0;
+        frames.restart();
         window_n = 0;
         window_i = 0;
         dead_ticks = 0;
@@ -641,6 +657,8 @@ void *fps_sampler_thread(void *args) noexcept {
                    static_cast<unsigned long long>(bc_count));
         }
       }
+      if (bc_hook.installed())
+        frames.add(bc_ok ? bc_hz : 0.f, monotonic_ns());
       if (bc_ok) {
         bc_dead = 0;
         window[window_i] = bc_hz;
@@ -656,6 +674,7 @@ void *fps_sampler_thread(void *args) noexcept {
         bc_sample.unix_ns = onion_fps_realtime_ns();
         std::strncpy(bc_sample.title_id, tid.c_str(),
                      sizeof(bc_sample.title_id) - 1);
+        attach_frame_count(bc_sample, frames, bc_hz);
         onion::fps::publish(bc_sample);
         if (last_publish_valid != 1) {
           LOG_INFO("fps: bc source active tid=%s pid=%d fps=%.2f "
@@ -755,6 +774,10 @@ void *fps_sampler_thread(void *args) noexcept {
       logged_vsync_fallback = false;
     }
     dead_ticks = hout.dead_ticks;
+    /* Count the displayed (composed, unsmoothed) rate; a tick with every
+     * counter stalled showed no new frames. */
+    const float raw_fps = hout.valid ? hout.fps : 0.f;
+    frames.add(raw_fps, monotonic_ns());
     if (hout.valid) {
       window[window_i] = hout.fps;
       window_i = (window_i + 1) % onion::fps::kWindow;
@@ -770,6 +793,8 @@ void *fps_sampler_thread(void *args) noexcept {
     sample.fps = hout.valid ? hout.fps : 0.f;
     sample.unix_ns = onion_fps_realtime_ns();
     std::strncpy(sample.title_id, tid.c_str(), sizeof(sample.title_id) - 1);
+    if (sample.valid)
+      attach_frame_count(sample, frames, raw_fps);
     onion::fps::publish(sample);
 
     if (last_publish_valid != static_cast<int>(sample.valid)) {

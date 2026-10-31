@@ -2,6 +2,7 @@
 #include <onion/fps_formula.hpp>
 #include <onion/fps_sample.h>
 
+#include <cmath>
 #include <cstring>
 
 namespace onion {
@@ -25,6 +26,34 @@ float rolling_mean(const float *samples, int n) {
   for (int i = 0; i < n; ++i)
     sum += static_cast<double>(samples[i]);
   return static_cast<float>(sum / static_cast<double>(n));
+}
+
+void FrameAccumulator::add(float fps, uint64_t now_ns) {
+  if (now_ns == 0)
+    return;
+  if (!(fps > 0.f) || !std::isfinite(fps))
+    fps = 0.f;
+  if (last_ns_ == 0 || now_ns <= last_ns_) {
+    last_ns_ = now_ns; /* first tick (or clock hiccup): time base only */
+    return;
+  }
+  const uint64_t dt_ns = now_ns - last_ns_;
+  last_ns_ = now_ns;
+  if (dt_ns > kMaxGapNs) {
+    /* Too long to guess what was on screen: start over. */
+    frames_milli_ = 0;
+    ++epoch_;
+    return;
+  }
+  /* frames × 1000 = fps × dt_s × 1000 = fps × dt_ns / 1e6 */
+  frames_milli_ += static_cast<uint64_t>(
+      std::llround(static_cast<double>(fps) * static_cast<double>(dt_ns) / 1e6));
+}
+
+void FrameAccumulator::restart() {
+  frames_milli_ = 0;
+  last_ns_ = 0;
+  ++epoch_;
 }
 
 HybridOut compose(const HybridIn &in) {

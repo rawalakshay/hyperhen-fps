@@ -156,6 +156,7 @@ TEST_CXX_SRCS := \
   test_toolbox_injection.cpp \
   test_overlay_text_metrics.cpp \
   test_overlay_layout.cpp \
+  test_overlay_scene.cpp \
 	test_fps_formula.cpp \
 	test_app_lifecycle.cpp \
 	test_sprx_loader.cpp \

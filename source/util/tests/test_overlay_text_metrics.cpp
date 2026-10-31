@@ -33,6 +33,21 @@ int test_font_size_scales_width() {
   return 0;
 }
 
+int test_utf8_counts_code_points() {
+  using onion::overlay::text_advance;
+  /* "58°" = two digits + one narrow degree sign, not three 12px bytes. */
+  TEST_ASSERT_EQ_INT(29, static_cast<int>(text_advance("58\xC2\xB0")));
+  /* Other multi-byte glyphs (em dash) count once at the default advance. */
+  TEST_ASSERT_EQ_INT(12, static_cast<int>(text_advance("\xE2\x80\x94")));
+  TEST_ASSERT_EQ_INT(0, static_cast<int>(text_advance("")));
+  TEST_ASSERT_EQ_INT(0, static_cast<int>(text_advance(nullptr)));
+  /* estimate_text_width keeps its padding and minimum on top. */
+  TEST_ASSERT_EQ_INT(
+      static_cast<int>(6.0f + text_advance("100%")),
+      static_cast<int>(onion::overlay::estimate_text_width("100%")));
+  return 0;
+}
+
 } // namespace
 
 extern "C" int test_overlay_text_metrics_suite(void) {
@@ -45,5 +60,7 @@ extern "C" int test_overlay_text_metrics_suite(void) {
                              test_per_core_padding_does_not_expand_slot);
   failures += onion_test_run("overlay_text_metrics.font_scale",
                              test_font_size_scales_width);
+  failures += onion_test_run("overlay_text_metrics.utf8",
+                             test_utf8_counts_code_points);
   return failures;
 }

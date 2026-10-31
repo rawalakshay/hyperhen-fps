@@ -50,6 +50,36 @@ struct HybridOut {
  */
 HybridOut compose(const HybridIn &in);
 
+/**
+ * Running count of displayed frames, published so readers can take exact
+ * rates over their own windows. Each valid tick adds rate × tick length, so
+ * the count stays continuous when the measuring source changes (ring →
+ * global → scanout) and in multi-pass mode, where raw counters would jump.
+ */
+class FrameAccumulator {
+public:
+  /** A pause longer than this starts a new epoch instead of bridging it. */
+  static constexpr uint64_t kMaxGapNs = 1000000000ull;
+
+  /** Fold one tick of `fps` ending at monotonic `now_ns`. A zero, negative
+   *  or non-finite rate (stalled counter) adds no frames but still moves the
+   *  clock, so the next tick is not stretched over the stall. */
+  void add(float fps, uint64_t now_ns);
+  /** New game or process: restart the count under a new epoch. */
+  void restart();
+
+  uint64_t frames_milli() const { return frames_milli_; }
+  uint64_t last_ns() const { return last_ns_; }
+  uint32_t epoch() const { return epoch_; }
+  /** True once a tick has set the time base. */
+  bool started() const { return last_ns_ != 0; }
+
+private:
+  uint64_t frames_milli_ = 0;
+  uint64_t last_ns_ = 0;
+  uint32_t epoch_ = 1;
+};
+
 /** True for PPSA* / PPSB* (PS5 native retail + digital). */
 bool is_ps5_native_title(const char *title_id);
 

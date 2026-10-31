@@ -103,7 +103,7 @@ background=true
 edge=top
 # align packs metrics to the left, center, or right of the bar.
 # Available values: left, center, right
-align=center
+align=left
 # show_cpu displays CPU temperature and usage.
 # Available values: true, false
 show_cpu=true
@@ -131,6 +131,29 @@ font_size=medium
 # order is the left-to-right metric sequence on the bar.
 # Available values: comma-separated fps, cpu, gpu, memory, ip, fan
 order=fps,cpu,gpu,memory,ip,fan
+# The keys below are read by the standalone fps-monitor only.
+# detail picks how much the monitor shows: an FPS pill, one compact
+# line, a corner panel, or the panel with per-core CPU.
+# Available values: minimal, compact, panel, full
+detail=panel
+# opacity is the background opacity in percent; 0 hides it.
+# Available values: 0, 40, 65, 85
+opacity=65
+# brand shows the "4aLse Benchmarks" header on the panel.
+# Available values: true, false
+brand=false
+# fps_pill also shows the FPS pill in the opposite corner.
+# Available values: true, false
+fps_pill=false
+# system shows the CPU, GPU and memory row under the charts.
+# Available values: true, false
+system=true
+# frame_graph shows the 7.5 s frame-time graph along the bottom edge.
+# Available values: true, false
+frame_graph=false
+# margin is the gap from the screen edges, in pixels.
+# Available values: 0, 5, 10, 20
+margin=10
 
 [shortcuts]
 # cheats_menu controls the shortcut that opens the cheats menu.

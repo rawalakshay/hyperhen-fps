@@ -74,11 +74,18 @@ both idle when `overlay.enabled && overlay.show_fps` is false or no big app runs
   via `ToolboxInject(ONION_READY_FPS_MONITOR_UI)` + libNineS `Inject_Toolbox`
   (covers rest-mode resume and ShellUI restart). Exits if HyperHEN or another
   monitor instance is running.
-- ShellUI side (`shellui/main.cpp`): hooks only `PUI.Application.Update`, then reuses
-  `prx_overlay.cpp` built with `HYPERHEN_FPS_MONITOR` (Toolbox polls compiled out).
-  It shares `mono_widgets.cpp` and `overlay_layout_apply.cpp` with HyperHEN's shellui.
-- Policy: always FPS on, IP/fan off; CPU/GPU/MEM and layout come from `[overlay]` in
-  `config.ini` if present (never created). Logs: `/data/fps-monitor/fps-monitor.log`.
+- ShellUI side (`shellui/main.cpp`): hooks only `PUI.Application.Update`, then draws
+  onionHEN 0.9.0's scene overlay (`shellui/monitor_overlay.cpp`): pure layout in
+  `source/shellui/include/overlay_scene.hpp` (host-tested, `test_overlay_scene.cpp`),
+  Mono widget reconciler in `source/shellui/src/overlay_scene_renderer.cpp`.
+  HyperHEN's own shellui does NOT compile these; it keeps the old bar (`prx_overlay.cpp`).
+  Shares `mono_widgets.cpp` and `overlay_layout_apply.cpp` with HyperHEN's shellui.
+- Detail levels via `[overlay] detail=minimal|compact|panel|full` (default panel), plus
+  `opacity`, `margin`, `system`, `frame_graph`, `fps_pill`, `brand`, `edge`, `align`,
+  `font_size`. Read from `config.ini` if present (never created). Always FPS on.
+  Logs: `/data/fps-monitor/fps-monitor.log`.
+- Exact AVG/LOW and frame-time bars use the `ONION_FPS_EXT_FRAMES` running frame count
+  the daemon sampler attaches to `OnionFpsSample` (`FrameAccumulator`, `fps_formula.cpp`).
 - Build alone: `cmake --build build --target fps_monitor`.
 
 ### Debugging FPS

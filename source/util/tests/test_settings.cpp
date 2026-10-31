@@ -74,11 +74,16 @@ static int test_defaults_and_serialize_keys(void) {
                                  "# Available values: true, false\n"
                                  "enabled=true\n") != std::string::npos);
   TEST_ASSERT_TRUE(text.find("edge=top") != std::string::npos);
-  TEST_ASSERT_TRUE(text.find("align=center") != std::string::npos);
+  TEST_ASSERT_TRUE(text.find("align=left") != std::string::npos);
   TEST_ASSERT_TRUE(text.find("font_size=medium") != std::string::npos);
   TEST_ASSERT_TRUE(text.find("order=fps,cpu,gpu,memory,ip,fan") !=
                    std::string::npos);
   TEST_ASSERT_TRUE(text.find("background=true") != std::string::npos);
+  TEST_ASSERT_TRUE(text.find("detail=panel") != std::string::npos);
+  TEST_ASSERT_TRUE(text.find("opacity=65") != std::string::npos);
+  TEST_ASSERT_TRUE(text.find("brand=false") != std::string::npos);
+  TEST_ASSERT_TRUE(text.find("fps_pill=false") != std::string::npos);
+  TEST_ASSERT_TRUE(text.find("system=true") != std::string::npos);
   TEST_ASSERT_TRUE(
       text.find("exact_title_ids=ITEM00001,NPXS39041,PKGI13337,PKGI12345,"
                 "TOOL00001") != std::string::npos);
@@ -159,6 +164,13 @@ static int test_full_schema_roundtrip(void) {
   in.overlay_pos = 2;
   in.overlay_align = onion::kOverlayAlignRight;
   in.overlay_font_size = onion::kOverlayFontLarge;
+  in.overlay_detail = onion::kOverlayDetailFull;
+  in.overlay_opacity = 40;
+  in.overlay_brand = true;
+  in.overlay_fps_pill = true;
+  in.overlay_system = false;
+  in.overlay_frame_graph = true;
+  in.overlay_margin = 20;
   in.overlay_order = {onion::kOverlayMetricFan, onion::kOverlayMetricFps,
                       onion::kOverlayMetricCpu, onion::kOverlayMetricGpu,
                       onion::kOverlayMetricMemory, onion::kOverlayMetricIp};
@@ -200,6 +212,13 @@ static int test_full_schema_roundtrip(void) {
   TEST_ASSERT_EQ_INT(in.overlay_pos, out.overlay_pos);
   TEST_ASSERT_EQ_INT(in.overlay_align, out.overlay_align);
   TEST_ASSERT_EQ_INT(in.overlay_font_size, out.overlay_font_size);
+  TEST_ASSERT_EQ_INT(in.overlay_detail, out.overlay_detail);
+  TEST_ASSERT_EQ_INT(in.overlay_opacity, out.overlay_opacity);
+  TEST_ASSERT_TRUE(out.overlay_brand == in.overlay_brand);
+  TEST_ASSERT_TRUE(out.overlay_fps_pill == in.overlay_fps_pill);
+  TEST_ASSERT_TRUE(out.overlay_system == in.overlay_system);
+  TEST_ASSERT_TRUE(out.overlay_frame_graph == in.overlay_frame_graph);
+  TEST_ASSERT_EQ_INT(in.overlay_margin, out.overlay_margin);
   TEST_ASSERT_EQ_INT(in.overlay_order[0], out.overlay_order[0]);
   TEST_ASSERT_EQ_INT(in.overlay_order[1], out.overlay_order[1]);
   TEST_ASSERT_EQ_INT(in.overlay_order[5], out.overlay_order[5]);
@@ -244,6 +263,8 @@ static int test_partial_ini_keeps_defaults(void) {
   TEST_ASSERT_EQ_INT(77, out.fan_threshold);
   TEST_ASSERT_TRUE(out.overlay_enabled);
   TEST_ASSERT_TRUE(out.overlay_background);
+  TEST_ASSERT_EQ_INT(onion::kOverlayDetailPanel, out.overlay_detail);
+  TEST_ASSERT_EQ_INT(onion::kOverlayOpacityDefault, out.overlay_opacity);
   TEST_ASSERT_TRUE(out.app_jailbreak_enabled);
   TEST_ASSERT_TRUE(out.kstuff_autoload);
   TEST_ASSERT_EQ_U64(10, out.rest_mode_delay_seconds);
@@ -340,6 +361,7 @@ static int test_serialize_contains_overlay_keys(void) {
   TEST_ASSERT_TRUE(text.find("show_fps=") != std::string::npos);
   TEST_ASSERT_TRUE(text.find("enabled=false") != std::string::npos);
   TEST_ASSERT_TRUE(text.find("background=false") != std::string::npos);
+  TEST_ASSERT_TRUE(text.find("margin=10") != std::string::npos);
   TEST_ASSERT_TRUE(text.find("show_ip_address=true") != std::string::npos);
   TEST_ASSERT_TRUE(text.find("cpu_usage_mode=per_core") != std::string::npos);
   TEST_ASSERT_TRUE(text.find("edge=bottom") != std::string::npos);
@@ -689,7 +711,7 @@ static int test_overlay_edge_and_align(void) {
     onion::Settings out{};
     TEST_ASSERT_TRUE(onion::settings_load_file(path.c_str(), &out));
     TEST_ASSERT_EQ_INT(c.expected_pos, out.overlay_pos);
-    TEST_ASSERT_EQ_INT(onion::kOverlayAlignCenter, out.overlay_align);
+    TEST_ASSERT_EQ_INT(onion::kOverlayAlignLeft, out.overlay_align);
     TEST_ASSERT_TRUE(onion::settings_serialize(out).find(
                          std::string("edge=") + c.edge_canonical) !=
                      std::string::npos);
@@ -755,12 +777,17 @@ static int test_overlay_font_and_order(void) {
   FILE *f = fopen(path.c_str(), "w");
   TEST_ASSERT_TRUE(f != nullptr);
   fputs("[meta]\nschema_version=1\n\n[overlay]\n"
-        "font_size=large\norder=fan,ip,ram\n",
+        "detail=FULL\nopacity=85\nbrand=true\nmargin=20\nfont_size=large\n"
+        "order=fan,ip,ram\n",
         f);
   fclose(f);
   onion::Settings out{};
   TEST_ASSERT_TRUE(onion::settings_load_file(path.c_str(), &out));
   TEST_ASSERT_EQ_INT(onion::kOverlayFontLarge, out.overlay_font_size);
+  TEST_ASSERT_EQ_INT(onion::kOverlayDetailFull, out.overlay_detail);
+  TEST_ASSERT_EQ_INT(85, out.overlay_opacity);
+  TEST_ASSERT_TRUE(out.overlay_brand);
+  TEST_ASSERT_EQ_INT(20, out.overlay_margin);
   TEST_ASSERT_EQ_INT(onion::kOverlayMetricFan, out.overlay_order[0]);
   TEST_ASSERT_EQ_INT(onion::kOverlayMetricIp, out.overlay_order[1]);
   TEST_ASSERT_EQ_INT(onion::kOverlayMetricMemory, out.overlay_order[2]);
@@ -772,15 +799,52 @@ static int test_overlay_font_and_order(void) {
 
   f = fopen(path.c_str(), "w");
   TEST_ASSERT_TRUE(f != nullptr);
-  fputs("[meta]\nschema_version=1\n\n[overlay]\nfont_size=tiny\norder=\n", f);
+  fputs("[meta]\nschema_version=1\n\n[overlay]\ndetail=grid\nopacity=50\n"
+        "margin=7\nfont_size=tiny\norder=\n",
+        f);
   fclose(f);
   onion::Settings invalid{};
   TEST_ASSERT_TRUE(onion::settings_load_file(path.c_str(), &invalid));
   TEST_ASSERT_EQ_INT(onion::kOverlayFontMedium, invalid.overlay_font_size);
+  TEST_ASSERT_EQ_INT(onion::kOverlayDetailDefault, invalid.overlay_detail);
+  TEST_ASSERT_EQ_INT(onion::kOverlayOpacityDefault, invalid.overlay_opacity);
+  /* only 0/5/10/20 are offered; anything else falls back to the default */
+  TEST_ASSERT_EQ_INT(onion::kOverlayMarginDefault, invalid.overlay_margin);
   TEST_ASSERT_EQ_INT(onion::kOverlayMetricFps, invalid.overlay_order[0]);
   TEST_ASSERT_EQ_INT(onion::kOverlayMetricFan, invalid.overlay_order[5]);
 
   unlink(path.c_str());
+  return 0;
+}
+
+static onion::Settings load_overlay_ini(const char *overlay_body) {
+  onion::Settings out{};
+  std::string path = temp_ini_path();
+  if (path.empty())
+    return out;
+  FILE *f = fopen(path.c_str(), "w");
+  if (!f)
+    return out;
+  fputs("[meta]\nschema_version=1\n\n[overlay]\n", f);
+  fputs(overlay_body, f);
+  fclose(f);
+  onion::settings_load_file(path.c_str(), &out);
+  unlink(path.c_str());
+  return out;
+}
+
+/* fps-monitor opacity: overlay.opacity wins, else background=false hides it. */
+static int test_overlay_opacity_from_background(void) {
+  onion::Settings s = load_overlay_ini("background=false\n");
+  TEST_ASSERT_TRUE(!s.overlay_background);
+  TEST_ASSERT_EQ_INT(0, s.overlay_opacity);
+
+  s = load_overlay_ini("background=true\n");
+  TEST_ASSERT_EQ_INT(onion::kOverlayOpacityDefault, s.overlay_opacity);
+
+  s = load_overlay_ini("background=false\nopacity=85\n");
+  TEST_ASSERT_TRUE(!s.overlay_background);
+  TEST_ASSERT_EQ_INT(85, s.overlay_opacity);
   return 0;
 }
 
@@ -800,6 +864,8 @@ extern "C" int test_settings_suite(void) {
                              test_overlay_edge_and_align);
   failures += onion_test_run("settings_overlay_font_and_order",
                              test_overlay_font_and_order);
+  failures += onion_test_run("settings_overlay_opacity_from_background",
+                             test_overlay_opacity_from_background);
   failures += onion_test_run("settings_empty_file_defaults", test_empty_file_loads_defaults);
   failures += onion_test_run("settings_app_jailbreak_allowlist",
                              test_app_jailbreak_allowlist_parse_policy);

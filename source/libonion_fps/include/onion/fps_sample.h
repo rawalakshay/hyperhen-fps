@@ -33,6 +33,10 @@ enum OnionFpsSource {
   ONION_FPS_SRC_BC = 1u << 5
 };
 
+/* ext_layout values. 0 (what older daemons leave there) = no extension. */
+#define ONION_FPS_EXT_NONE 0u
+#define ONION_FPS_EXT_FRAMES 1u
+
 struct OnionFpsSample {
   uint32_t magic;
   uint32_t seq;
@@ -40,11 +44,24 @@ struct OnionFpsSample {
   uint8_t valid;
   uint8_t source;
   uint8_t pad[2];
-  float fps;
+  float fps; /* smoothed display rate (rolling mean) */
   uint32_t pad_align;
   uint64_t unix_ns;
   char title_id[16];
-  uint8_t reserved[80];
+  /*
+   * ONION_FPS_EXT_FRAMES: a running count of displayed frames, so readers can
+   * take exact rates over their own windows instead of averaging `fps` again.
+   * frames_milli is frames × 1000 at frames_mono_ns (daemon CLOCK_MONOTONIC);
+   * both only grow within one ext_epoch. A new epoch (new game, gap) means
+   * the count restarted and earlier readings must not be differenced.
+   */
+  uint16_t ext_layout;
+  uint16_t ext_flags;
+  uint32_t ext_epoch;
+  uint64_t frames_milli;
+  uint64_t frames_mono_ns;
+  float raw_fps; /* this tick's unsmoothed rate */
+  uint8_t reserved[52];
 };
 
 static inline uint64_t onion_fps_realtime_ns(void) {
@@ -63,11 +80,31 @@ static inline int onion_fps_seqlock_load(const volatile struct OnionFpsSample *s
     if (s1 & 1u)
       continue;
     memcpy(dst, (const void *)src, sizeof(*dst));
+    /* Keep the payload reads above the re-check of seq. */
+    __atomic_thread_fence(__ATOMIC_ACQUIRE);
     const uint32_t s2 = __atomic_load_n(&src->seq, __ATOMIC_ACQUIRE);
     if (s1 == s2 && (s2 & 1u) == 0)
       return 0;
   }
   return -1;
+}
+
+/**
+ * Writer side: seq goes odd before any payload byte changes and even only
+ * after all of them land, so a reader never accepts a torn record.
+ */
+static inline void onion_fps_seqlock_store(volatile struct OnionFpsSample *dst,
+                                           const struct OnionFpsSample *src) {
+  if (!dst || !src)
+    return;
+  const uint32_t seq = __atomic_load_n(&dst->seq, __ATOMIC_RELAXED);
+  __atomic_store_n(&dst->seq, seq + 1u, __ATOMIC_RELAXED);
+  __atomic_thread_fence(__ATOMIC_RELEASE);
+  struct OnionFpsSample tmp = *src;
+  tmp.seq = seq + 1u; /* the copy must not publish an even seq early */
+  memcpy((void *)dst, &tmp, sizeof(tmp));
+  __atomic_thread_fence(__ATOMIC_RELEASE);
+  __atomic_store_n(&dst->seq, seq + 2u, __ATOMIC_RELAXED);
 }
 
 static inline struct OnionFpsSample *onion_fps_map_ro(void) {
@@ -113,4 +150,13 @@ static_assert(sizeof(OnionFpsSample) == ONION_FPS_SAMPLE_BYTES,
               "OnionFpsSample must stay 128 bytes");
 static_assert(offsetof(OnionFpsSample, unix_ns) == 24,
               "unix_ns must be 8-byte aligned");
+/* The extension sits in what used to be reserved[80]; older readers ignore
+ * it and older writers leave it zeroed. */
+static_assert(offsetof(OnionFpsSample, ext_layout) == 48,
+              "extension must start where reserved[] began");
+static_assert(offsetof(OnionFpsSample, frames_milli) == 56,
+              "frames_milli must be 8-byte aligned");
+static_assert(offsetof(OnionFpsSample, frames_mono_ns) == 64,
+              "frames_mono_ns must be 8-byte aligned");
+static_assert(offsetof(OnionFpsSample, raw_fps) == 72, "raw_fps offset");
 #endif

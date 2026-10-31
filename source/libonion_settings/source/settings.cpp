@@ -574,6 +574,25 @@ const char *cpu_usage_mode_name(bool per_core) {
   return per_core ? "per_core" : "average";
 }
 
+int parse_overlay_detail(const char *s, int def) {
+  for (int detail = kOverlayDetailMinimal; detail <= kOverlayDetailFull;
+       ++detail) {
+    if (streq_ci(s, overlay_detail_name(detail)))
+      return detail;
+  }
+  return def;
+}
+
+int parse_overlay_opacity(const char *s, int def) {
+  const int pct = parse_int_range(s, def, 0, 100);
+  return overlay_opacity_valid(pct) ? pct : def;
+}
+
+int parse_overlay_margin(const char *s, int def) {
+  const int px = parse_int_range(s, def, 0, 20);
+  return overlay_margin_valid(px) ? px : def;
+}
+
 int parse_overlay_font_size(const char *s, int def) {
   if (streq_ci(s, "small")) {
     return kOverlayFontSmall;
@@ -808,6 +827,24 @@ bool apply_parser(IniParser *parser, Settings *out) {
   if (const char *order = ini_get(parser, "overlay.order")) {
     parse_overlay_order(order, &out->overlay_order);
   }
+  out->overlay_detail = parse_overlay_detail(ini_get(parser, "overlay.detail"),
+                                             out->overlay_detail);
+  if (const char *opacity = ini_get(parser, "overlay.opacity")) {
+    out->overlay_opacity = parse_overlay_opacity(opacity, out->overlay_opacity);
+  } else if (!out->overlay_background) {
+    /* No opacity key: background=false still hides the panel. */
+    out->overlay_opacity = 0;
+  }
+  out->overlay_brand =
+      parse_bool(ini_get(parser, "overlay.brand"), out->overlay_brand);
+  out->overlay_fps_pill =
+      parse_bool(ini_get(parser, "overlay.fps_pill"), out->overlay_fps_pill);
+  out->overlay_system =
+      parse_bool(ini_get(parser, "overlay.system"), out->overlay_system);
+  out->overlay_frame_graph = parse_bool(ini_get(parser, "overlay.frame_graph"),
+                                        out->overlay_frame_graph);
+  out->overlay_margin = parse_overlay_margin(ini_get(parser, "overlay.margin"),
+                                             out->overlay_margin);
   out->cheats_shortcut_opt =
       parse_cheats_shortcut(ini_get(parser, "shortcuts.cheats_menu"),
                             out->cheats_shortcut_opt);
@@ -1000,6 +1037,29 @@ std::string settings_serialize(const Settings &in) {
   b += "# order is the left-to-right metric sequence on the bar.\n";
   b += "# Available values: comma-separated fps, cpu, gpu, memory, ip, fan\n";
   b += "order=" + serialize_overlay_order(in.overlay_order) + "\n";
+  b += "# The keys below are read by the standalone fps-monitor only.\n";
+  b += "# detail picks how much the monitor shows: an FPS pill, one compact\n";
+  b += "# line, a corner panel, or the panel with per-core CPU.\n";
+  b += "# Available values: minimal, compact, panel, full\n";
+  b += "detail=" + std::string(overlay_detail_name(in.overlay_detail)) + "\n";
+  b += "# opacity is the background opacity in percent; 0 hides it.\n";
+  b += "# Available values: 0, 40, 65, 85\n";
+  b += "opacity=" + std::to_string(in.overlay_opacity) + "\n";
+  b += "# brand shows the \"4aLse Benchmarks\" header on the panel.\n";
+  b += "# Available values: true, false\n";
+  b += "brand=" + bool_text(in.overlay_brand) + "\n";
+  b += "# fps_pill also shows the FPS pill in the opposite corner.\n";
+  b += "# Available values: true, false\n";
+  b += "fps_pill=" + bool_text(in.overlay_fps_pill) + "\n";
+  b += "# system shows the CPU, GPU and memory row under the charts.\n";
+  b += "# Available values: true, false\n";
+  b += "system=" + bool_text(in.overlay_system) + "\n";
+  b += "# frame_graph shows the 7.5 s frame-time graph along the bottom edge.\n";
+  b += "# Available values: true, false\n";
+  b += "frame_graph=" + bool_text(in.overlay_frame_graph) + "\n";
+  b += "# margin is the gap from the screen edges, in pixels.\n";
+  b += "# Available values: 0, 5, 10, 20\n";
+  b += "margin=" + std::to_string(in.overlay_margin) + "\n";
   b += "\n";
   b += "[shortcuts]\n";
   b += "# cheats_menu controls the shortcut that opens the cheats menu.\n";

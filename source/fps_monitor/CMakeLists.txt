@@ -1,7 +1,8 @@
 cmake_minimum_required (VERSION 3.20)
 
 # Standalone FPS monitor payload: fps-monitor.elf embeds monitor_shellui.elf.
-# Both reuse existing sources (daemon FPS sampler, shellui overlay) unchanged.
+# The host reuses the daemon FPS sampler unchanged; the ShellUI side draws
+# onionHEN's scene overlay (monitor_overlay.cpp + shellui scene renderer).
 project(fps_monitor C CXX ASM)
 
 onion_module_prologue(C_STANDARD 11 CXX_STANDARD 20)
@@ -17,20 +18,20 @@ set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -gfull -gdwarf-2 -pedantic -pedantic-error
 set(CMAKE_C_FLAGS_RELEASE "-Os -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "-Os -DNDEBUG")
 
-# --- monitor_shellui.elf: injected into SceShellUI, draws the bar only -------
+# --- monitor_shellui.elf: injected into SceShellUI, draws the overlay only ---
 add_executable(fps_monitor_shellui)
 set_target_properties(fps_monitor_shellui PROPERTIES OUTPUT_NAME "monitor_shellui.elf")
 target_link_options(fps_monitor_shellui PRIVATE "-Wl,--gc-sections" "-Wl,--icf=safe")
 target_sources(fps_monitor_shellui PRIVATE
 	"${D_CWD}/shellui/main.cpp"
-	"${D_SHELLUI}/src/prx_overlay.cpp"
-	"${D_SHELLUI}/src/shellui_overlay_widgets.cpp"
+	"${D_CWD}/shellui/monitor_overlay.cpp"
+	"${D_SHELLUI}/src/overlay_scene_renderer.cpp"
+	"${D_SHELLUI}/src/shellui_overlay_widgets.cpp" # resolve_root_dimensions
 	"${D_SHELLUI}/src/mono_widgets.cpp"
 	"${D_SHELLUI}/src/external_symbols.cpp"
 	"${D_SHELLUI}/src/hook_lifecycle.cpp"
 	"${D_SHELLUI}/src/overlay_layout_apply.cpp"
 )
-target_compile_definitions(fps_monitor_shellui PRIVATE HYPERHEN_FPS_MONITOR=1)
 onion_target_debug_define(fps_monitor_shellui)
 target_include_directories(fps_monitor_shellui PRIVATE
 	"${D_SHELLUI}/include"
